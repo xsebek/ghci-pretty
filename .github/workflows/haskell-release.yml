@@ -46,9 +46,9 @@ jobs:
         #   - "8.10.1"
         # cabal: ["3.2"]
         include:
-          - compiler: ghc-8.10.7
+          - compiler: ghc-8.10
             compilerKind: ghc
-            compilerVersion: 8.10.7
+            compilerVersion: 8.10
             cabal: "3.8"
             # It might be good idea to use older runner for building binary:
             # on latest runners like fedora, it would link symbols in newer
