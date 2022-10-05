@@ -41,23 +41,17 @@ jobs:
     strategy:
       matrix:
         # os: [ubuntu-latest, macOS-latest, windows-latest]
-        # ghc:
-        #   - "8.8.3"
-        #   - "8.10.1"
-        # cabal: ["3.2"]
         include:
-          - compiler: ghc-8.10
+          - compiler: ghc-8.10.7
             compilerKind: ghc
-            compilerVersion: 8.10
-            cabal: "3.8"
+            compilerVersion: 8.10.7
+            setup-method: ghcup
             # It might be good idea to use older runner for building binary:
             # on latest runners like fedora, it would link symbols in newer
             # system libraries, so users could not run it on older OSes
             os: ubuntu-20.04
 
     steps:
-      - name: Check out code
-        uses: actions/checkout@v2
 
       - name: apt
         run: |
@@ -95,11 +89,54 @@ jobs:
           HCKIND: ${{ matrix.compilerKind }}
           HCNAME: ${{ matrix.compiler }}
           HCVER: ${{ matrix.compilerVersion }}
+      - name: env
+        run: |
+          env
+      - name: write cabal config
+        run: |
+          mkdir -p $CABAL_DIR
+          cat >> $CABAL_CONFIG <<EOF
+          remote-build-reporting: anonymous
+          write-ghc-environment-files: never
+          remote-repo-cache: $CABAL_DIR/packages
+          logs-dir:          $CABAL_DIR/logs
+          world-file:        $CABAL_DIR/world
+          extra-prog-path:   $CABAL_DIR/bin
+          symlink-bindir:    $CABAL_DIR/bin
+          installdir:        $CABAL_DIR/bin
+          build-summary:     $CABAL_DIR/logs/build.log
+          store-dir:         $CABAL_DIR/store
+          install-dirs user
+            prefix: $CABAL_DIR
+          repository hackage.haskell.org
+            url: http://hackage.haskell.org/
+          EOF
+          cat >> $CABAL_CONFIG <<EOF
+          program-default-options
+            ghc-options: $GHCJOBS +RTS -M3G -RTS
+          EOF
+          cat $CABAL_CONFIG
+      - name: versions
+        run: |
+          $HC --version || true
+          $HC --print-project-git-commit-id || true
+          $CABAL --version || true
+      - name: update cabal index
+        run: |
+          $CABAL v2-update -v
+      - name: cache (tools)
+        uses: actions/cache@v2
+        with:
+          key: ${{ runner.os }}-${{ matrix.compiler }}-tools-436fbe9d
+          path: ~/.haskell-ci-tools
+
+      - name: Check out code
+        uses: actions/checkout@v2
 
       - name: Build binary
         run: |
           mkdir dist
-          cabal install exe:test-pretty --install-method=copy --overwrite-policy=always --installdir=dist
+          $CABAL install exe:test-pretty --install-method=copy --overwrite-policy=always --installdir=dist
 
       - name: Set binary path name
         run: echo "::set-env name=BINARY_PATH::./dist/test-pretty"
@@ -126,7 +163,7 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Generate tarball for Hackage 
-        run: cabal v2-sdist
+        run: $CABAL v2-sdist
       
       # - name: Generate documentation for Hackage
       #   # The hackage-server attempts to build documentation for library packages, but this can fail.
