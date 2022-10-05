@@ -139,7 +139,7 @@ jobs:
           $CABAL v2-install $ARG_COMPILER exe:test-pretty --install-method=copy --overwrite-policy=always --installdir=dist
 
       - name: Set binary path name
-        run: echo "::set-env name=BINARY_PATH::./dist/test-pretty"
+        run: echo BINARY_PATH="./dist/test-pretty" >> "$GITHUB_ENV"
 
       - name: Load Release URL File from release job
         uses: actions/download-artifact@v1
