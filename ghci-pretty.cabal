@@ -49,9 +49,9 @@ Library
         Text.Show.Pretty.Colored
 
     build-depends:
-        base >=4.12 && <5,
-        pretty-show >= 1.10 && <2,
-        hscolour >= 1.24 && <2
+        base >=4.5 && <5,
+        pretty-show >= 1.9 && <2,
+        hscolour >= 1.20 && <2
 
     ghc-options: -Wall
 
