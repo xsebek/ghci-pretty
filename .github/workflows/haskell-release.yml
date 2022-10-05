@@ -37,10 +37,11 @@ jobs:
   build_artifact:
     needs: [create_release]
     name: Haskell-Release - ${{ matrix.os }} - ${{ matrix.compiler }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-20.04
+    container:
+      image: buildpack-deps:bionic
     strategy:
       matrix:
-        # os: [ubuntu-latest, macOS-latest, windows-latest]
         include:
           - compiler: ghc-8.10.7
             compilerKind: ghc
@@ -49,7 +50,6 @@ jobs:
             # It might be good idea to use older runner for building binary:
             # on latest runners like fedora, it would link symbols in newer
             # system libraries, so users could not run it on older OSes
-            os: ubuntu-20.04
 
     steps:
 
