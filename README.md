@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/larskuhtz/ghci-pretty.svg?branch=master)](https://travis-ci.org/larskuhtz/ghci-pretty)
 
-A tiny package that combines the [ipprint](https://hackage.haskell.org/package/pretty-show)
+A tiny package that combines the [pretty-show](https://hackage.haskell.org/package/pretty-show)
 package and the [hscolour](https://hackage.haskell.org/package/hscolour)
 package to provide colored pretty-printing in ghci.
 
