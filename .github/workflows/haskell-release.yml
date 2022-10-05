@@ -1,0 +1,110 @@
+name: Release
+
+on:
+  # Trigger the workflow on the new PVP version tag created.
+  # https://pvp.haskell.org/
+  # See patterns explanation at:
+  # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+.[0-9]+*"
+
+jobs:
+  create_release:
+    name: Create Github Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            LICENSE
+
+      - name: Output Release URL File
+        run: echo "${{ steps.create_release.outputs.upload_url }}" > release_url.txt
+
+      - name: Save Release URL File for publish
+        uses: actions/upload-artifact@v3
+        with:
+          name: release_url
+          path: release_url.txt
+
+  build_artifact:
+    needs: [create_release]
+    name: Haskell-Release - ${{ matrix.os }} - ${{ matrix.compiler }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # os: [ubuntu-latest, macOS-latest, windows-latest]
+        # ghc:
+        #   - "8.8.3"
+        #   - "8.10.1"
+        # cabal: ["3.2"]
+        include:
+          - compiler: ghc-8.10.7
+            compilerKind: ghc
+            compilerVersion: 8.10.7
+            cabal: "3.8"
+            # It might be good idea to use older runner for building binary:
+            # on latest runners like fedora, it would link symbols in newer
+            # system libraries, so users could not run it on older OSes
+            os: ubuntu-20.04
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Setup Haskell
+        uses: actions/setup-haskell@v1.1.1
+        id: setup-haskell-cabal
+        with:
+          ghc-version: ${{ matrix.compilerVersion }}
+          cabal-version: ${{ matrix.cabal }}
+
+      - name: Build binary
+        run: |
+          mkdir dist
+          cabal install exe:test-pretty --install-method=copy --overwrite-policy=always --installdir=dist
+
+      - name: Set binary path name
+        run: echo "::set-env name=BINARY_PATH::./dist/test-pretty"
+
+      - name: Load Release URL File from release job
+        uses: actions/download-artifact@v1
+        with:
+          name: release_url
+
+      - name: Get Release File Name & Upload URL
+        id: get_release_info
+        run: |
+          echo "::set-output name=upload_url::$(cat release_url/release_url.txt)"
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release_info.outputs.upload_url }}
+          asset_path: ${{ env.BINARY_PATH }}
+          asset_name: test-pretty-${{ runner.os }}-${{ runner.arch }}
+          asset_content_type: application/octet-stream
+
+      - name: Generate tarball for Hackage 
+        run: cabal v2-sdist
+      
+      # - name: Generate documentation for Hackage
+      #   # The hackage-server attempts to build documentation for library packages, but this can fail.
+      #   # If it does we can do it ourselves
+      #   run: cabal v2-haddock --builddir=docs --haddock-for-hackage --enable-doc
+
+      - uses: haskell-actions/hackage-publish@v1
+        with:
+          hackageToken: "${{ secrets.HACKAGE_AUTH_TOKEN }}"
+          packagesPath: dist-newstyle/sdist
+          # docsPath: docs
+          publish: false
