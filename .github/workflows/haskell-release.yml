@@ -136,7 +136,7 @@ jobs:
       - name: Build binary
         run: |
           mkdir dist
-          $CABAL install exe:test-pretty --install-method=copy --overwrite-policy=always --installdir=dist
+          $CABAL v2-install $ARG_COMPILER exe:test-pretty --install-method=copy --overwrite-policy=always --installdir=dist
 
       - name: Set binary path name
         run: echo "::set-env name=BINARY_PATH::./dist/test-pretty"
